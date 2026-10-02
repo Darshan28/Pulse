@@ -1,0 +1,12 @@
+node_modules
+dist
+.vercel
+.env
+.env.local
+.data
+*.log
+.DS_Store
+coverage
+.turbo
+prisma/*.db
+prisma/*.db-journal

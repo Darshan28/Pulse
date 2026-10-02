@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SessionStatus {
+  DRAFT
+  LOBBY
+  LIVE
+  PAUSED
+  ENDED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  RATING
+  SCALE
+  OPEN_TEXT
+  WORD_CLOUD
+  RANKING
+  YES_NO
+  CONTENT_TEXT
+  CONTENT_IMAGE
+  CONTENT_VIDEO
+  CONTENT_INSTRUCTIONS
+  CONTENT_COMPARE
+}
+
+enum QuestionStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+/// Application profile for a Supabase Auth user. No passwords stored here.
+model UserProfile {
+  id                  String    @id @default(cuid())
+  authUserId          String    @unique
+  email               String?
+  role                String?
+  useCases            Json      @default("[]")
+  audienceSize        String?
+  onboardingCompleted Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  sessions            Session[]
+}
+
+model Session {
+  id               String        @id @default(cuid())
+  title            String
+  description      String?
+  joinCode         String        @unique
+  status           SessionStatus @default(DRAFT)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  startedAt        DateTime?
+  endedAt          DateTime?
+  createdById      String
+  createdBy        UserProfile   @relation(fields: [createdById], references: [id])
+  settings         Json          @default("{}")
+  activeQuestionId String?
+  questions        Question[]
+  participants     Participant[]
+  responses        Response[]
+}
+
+model Question {
+  id        String           @id @default(cuid())
+  sessionId String
+  session   Session          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type      QuestionType
+  prompt    String
+  config    Json             @default("{}")
+  order     Int
+  status    QuestionStatus   @default(DRAFT)
+  createdAt DateTime         @default(now())
+  options   QuestionOption[]
+  responses Response[]
+}
+
+model QuestionOption {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  label      String
+  order      Int
+}
+
+model Participant {
+  id          String     @id @default(cuid())
+  sessionId   String
+  session     Session    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  displayName String?
+  token       String     @unique
+  joinedAt    DateTime   @default(now())
+  leftAt      DateTime?
+  responses   Response[]
+
+  @@index([sessionId])
+}
+
+model Response {
+  id            String           @id @default(cuid())
+  sessionId     String
+  session       Session          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId    String
+  question      Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   Participant      @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  value         Json
+  createdAt     DateTime         @default(now())
+  answers       ResponseAnswer[]
+
+  @@unique([questionId, participantId])
+  @@index([sessionId, questionId])
+}
+
+model ResponseAnswer {
+  id         String   @id @default(cuid())
+  responseId String
+  response   Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  key        String
+  value      Json
+}

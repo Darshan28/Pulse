@@ -1,0 +1,32 @@
+:root {
+  /* Primary brand — teal / mint (matches landing) */
+  --pulse-purple: #14b8a6;
+  --pulse-magenta: #0f9f8a;
+  --pulse-deep: #0b1220;
+  --pulse-soft: #e8f8f4;
+  --pulse-ink: #0b1220;
+  --pulse-muted: #64748b;
+  --pulse-border: #d7e5e1;
+  --pulse-surface: #ffffff;
+  --pulse-bg: #f5f8f7;
+  --pulse-success: #0f8a72;
+  --pulse-warning: #c47f00;
+  --pulse-danger: #dc2626;
+  --pulse-info: #14b8a6;
+  --pulse-bar-1: #14b8a6;
+  --pulse-bar-2: #8b7cf6;
+  --pulse-bar-3: #5b9fed;
+  --pulse-bar-4: #2dd4bf;
+  --pulse-bar-5: #f59e0b;
+  --pulse-bar-6: #94a3b8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
