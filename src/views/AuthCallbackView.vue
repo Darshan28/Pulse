@@ -22,7 +22,9 @@ onMounted(async () => {
     }
     await router.replace(intent)
   } catch (e) {
-    error.value = friendlyAuthError(e)
+    // Prefer the thrown message when it is already user-safe (e.g. profile load failure).
+    const fallback = e instanceof Error && e.message ? e.message : undefined
+    error.value = friendlyAuthError(e, fallback)
   }
 })
 </script>
