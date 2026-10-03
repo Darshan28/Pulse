@@ -46,9 +46,14 @@ class UpstashBus implements RealtimeBus {
 
   async publish(event: RealtimeEvent) {
     const key = this.channel(event.sessionId)
-    await this.redis.lpush(key, JSON.stringify(event))
-    await this.redis.ltrim(key, 0, 99)
-    await this.redis.publish(key, JSON.stringify(event))
+    try {
+      await this.redis.lpush(key, JSON.stringify(event))
+      await this.redis.ltrim(key, 0, 99)
+      await this.redis.publish(key, JSON.stringify(event))
+    } catch (err) {
+      // Never fail presenter/participant mutations because Redis is down.
+      console.error('[realtime] Upstash publish failed; delivering locally only', err)
+    }
     await this.local.publish(event)
   }
 
@@ -79,7 +84,9 @@ class UpstashBus implements RealtimeBus {
 
     return () => {
       unsub()
-      const still = (this.local as unknown as { listeners: Map<string, Set<Listener>> }).listeners?.get(sessionId)
+      const still = (this.local as unknown as { listeners: Map<string, Set<Listener>> }).listeners?.get(
+        sessionId,
+      )
       if (!still || still.size === 0) {
         const t = this.timers.get(sessionId)
         if (t) clearInterval(t)
@@ -91,18 +98,27 @@ class UpstashBus implements RealtimeBus {
 
 let bus: RealtimeBus | null = null
 
+function resolveUpstashConfig() {
+  // Prefer Pulse names; also accept Upstash/Vercel integration defaults.
+  const url =
+    process.env.REDIS_URL?.trim() || process.env.UPSTASH_REDIS_REST_URL?.trim() || ''
+  const token =
+    process.env.REDIS_TOKEN?.trim() || process.env.UPSTASH_REDIS_REST_TOKEN?.trim() || ''
+  return { url, token }
+}
+
 export function getRealtimeBus(): RealtimeBus {
   if (bus) return bus
-  const url = process.env.REDIS_URL?.trim()
-  const token = process.env.REDIS_TOKEN?.trim()
+  const { url, token } = resolveUpstashConfig()
   const isProd = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production'
   if (url && token) {
     bus = new UpstashBus(url, token)
     console.log('[pulse] Realtime: Upstash Redis')
   } else {
     if (isProd) {
-      throw new Error(
-        '[pulse] REDIS_URL and REDIS_TOKEN are required on Vercel/production for multi-instance realtime.',
+      console.warn(
+        '[pulse] Redis env missing on Vercel — using in-process memory bus. ' +
+          'Set REDIS_URL + REDIS_TOKEN (or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN).',
       )
     }
     bus = new MemoryBus()
